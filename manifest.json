@@ -1,0 +1,36 @@
+{
+
+  "manifest_version": 3,
+
+  "name": "AutoFill & Net Weight Checker (With Quantity)",
+
+  "version": "1.2",
+
+  "description": "Fills transport data and adjusts net weights based on quantity if needed.",
+
+  "permissions": ["scripting", "activeTab"],
+
+  "content_scripts": [
+
+    {
+
+      "matches": ["https://solutions.inet-logistics.com/*"],
+
+      "js": ["content.js"],
+
+      "run_at": "document_idle",
+
+      "all_frames": true
+
+    }
+
+  ],
+
+  "icons": {
+
+    "48": "icon.png"
+
+  }
+
+}
+ 
