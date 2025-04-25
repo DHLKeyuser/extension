@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Extension Installer</title>
+<style>
+   body {
+     font-family: Arial, sans-serif;
+     text-align: center;
+     padding: 50px;
+     background-color: #f9f9f9;
+   }
+   h1, h2 {
+     margin-bottom: 20px;
+   }
+   button {
+     padding: 15px 30px;
+     font-size: 16px;
+     cursor: pointer;
+     margin: 20px 0;
+   }
+   video {
+     margin-top: 40px;
+     width: 100%;
+     max-width: 700px;
+     height: auto;
+     border-radius: 8px;
+     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+   }
+</style>
+</head>
+<body>
+<h1>Install the Extension</h1>
+<p>Click the button below to download all required files.</p>
+<button onclick="downloadAll()">Download All</button>
+<h2>Tutorial: How to Install on Microsoft Edge</h2>
+<video controls>
+<source src="tutorial.mp4" type="video/mp4">
+   Your browser does not support the video tag.
+</video>
+<script>
+   function downloadAll() {
+     const files = [
+       'content.js',
+       'icon.png',
+       'manifest.json'
+     ];
+     files.forEach(file => {
+       const a = document.createElement('a');
+       a.href = file;
+       a.download = '';
+       document.body.appendChild(a);
+       a.click();
+       document.body.removeChild(a);
+     });
+   }
+</script>
+</body>
+</html>
