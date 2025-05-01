@@ -1,16 +1,22 @@
-(function checkAndRun() {
+(function () {
 
-  // Check if the current site matches the desired URL
+  if (window.location.hostname !== 'solutions.inet-logistics.com') return;
 
-  if (window.location.hostname !== 'solutions.inet-logistics.com') {
+  function pad(n) { return n < 10 ? '0' + n : n; }
 
-    console.log('[AutoFill Extension] This script only works on the specified site.');
+  function getNextWeekday(date) {
 
-    return; // Exit if not on the correct site
+    while (date.getDay() === 0 || date.getDay() === 6) {
+
+      date.setDate(date.getDate() + 1);
+
+    }
+
+    return date;
 
   }
 
-  const waitForFields = () => {
+  function runAutoFillLogic() {
 
     const pickupDate = document.getElementById('elmtKopf.TransportInfo.AbholungVonDatum');
 
@@ -18,41 +24,23 @@
 
     const deliveryDate = document.getElementById('elmtKopf.TransportInfo.ZustellungVonDatum');
 
-    const kolliWeight = document.getElementById('elmtKolliK_0_Gewicht');
-
-    if (!pickupDate || !pickupTime || !deliveryDate || !kolliWeight) {
-
-      console.log('[AutoFill Extension] Waiting for all required fields...');
-
-      return setTimeout(waitForFields, 500);
-
-    }
-
-    console.log('[AutoFill Extension] Fields detected. Proceeding...');
-
-    function pad(n) { return n < 10 ? '0' + n : n; }
-
-    function getNextWeekday(date) {
-
-      while (date.getDay() === 0 || date.getDay() === 6) {
-
-        date.setDate(date.getDate() + 1);
-
-      }
-
-      return date;
-
-    }
+    if (!pickupDate || !pickupTime || !deliveryDate) return;
 
     const now = new Date();
 
+    let pickupBase = new Date(now);
+
+    if (now.getHours() >= 23 && now.getMinutes() >= 30) {
+
+      pickupBase.setDate(pickupBase.getDate() + 1);
+
+    }
+
     const plus30 = new Date(now.getTime() + 30 * 60000);
 
-    // Get next weekday for pickup
+    const pickup = getNextWeekday(pickupBase);
 
-    const pickup = getNextWeekday(new Date(now));
-
-    const delivery = getNextWeekday(new Date(now.getTime() + 5 * 24 * 60 * 60000));
+    const delivery = getNextWeekday(new Date(pickupBase.getTime() + 5 * 24 * 60 * 60000));
 
     const dateToday = pad(pickup.getDate()) + '.' + pad(pickup.getMonth() + 1) + '.' + pickup.getFullYear();
 
@@ -66,60 +54,117 @@
 
     deliveryDate.value = datePlus5;
 
-    let refVal = parseFloat(kolliWeight.value.replace(',', '.')) || 0;
-
-    let items = [];
-
-    let totalNet = 0;
+    const kollis = [];
 
     for (let i = 0; i < 20; i++) {
 
-      let weightField = document.getElementById('elmtArtikelA_' + i + '_Gewicht');
+      const k = document.getElementById(`elmtKolliK_${i}_Gewicht`);
 
-      let qtyField = document.getElementById('elmtArtikelA_' + i + '_Menge');
+      if (k) {
 
-      if (weightField && qtyField) {
+        const val = parseFloat(k.value.replace(',', '.')) || 0;
 
-        let net = parseFloat(weightField.value.replace(',', '.')) || 0;
-
-        let qty = parseFloat(qtyField.value.replace(',', '.')) || 1;
-
-        let totalItemWeight = net * qty;
-
-        items.push({ field: weightField, net: net, qty: qty });
-
-        totalNet += totalItemWeight;
+        kollis.push({ field: k, value: val });
 
       }
 
     }
 
-    if (totalNet >= refVal) {
+    const articles = [];
 
-      console.log('[AutoFill Extension] Adjusting net weights...');
+    for (let i = 0; i < 100; i++) {
 
-      let target = refVal - 0.01;
+      const w = document.getElementById(`elmtArtikelA_${i}_Gewicht`);
 
-      let factor = target / totalNet;
+      const q = document.getElementById(`elmtArtikelA_${i}_Menge`);
 
-      items.forEach(item => {
+      if (w && q) {
 
-        let adjustedNet = (item.net * factor).toFixed(3);
+        const net = parseFloat(w.value.replace(',', '.')) || 0;
 
-        item.field.value = adjustedNet.replace('.', ',');
+        const qty = parseFloat(q.value.replace(',', '.')) || 1;
 
-        item.field.dispatchEvent(new Event('change'));
+        articles.push({ field: w, net, qty });
 
-      });
+      }
+
+    }
+
+    const groupCount = kollis.length;
+
+    const perGroup = Math.floor(articles.length / groupCount);
+
+    const remainder = articles.length % groupCount;
+
+    let idx = 0;
+
+    for (let i = 0; i < groupCount; i++) {
+
+      const size = perGroup + (i === groupCount - 1 ? remainder : 0);
+
+      const group = articles.slice(idx, idx + size);
+
+      idx += size;
+
+      const totalNet = group.reduce((sum, a) => sum + a.net * a.qty, 0);
+
+      const gross = kollis[i].value;
+
+      if (totalNet >= gross && totalNet > 0) {
+
+        const factor = (gross - 0.01) / totalNet;
+
+        group.forEach(a => {
+
+          const newVal = (a.net * factor).toFixed(3);
+
+          a.field.value = newVal.replace('.', ',');
+
+          a.field.dispatchEvent(new Event('change'));
+
+        });
+
+      }
 
     }
 
     console.log('[AutoFill Extension] Done.');
 
-  };
+    return true;
 
-  waitForFields();
+  }
+
+  function checkAndMaybeRun() {
+
+    const pickup = document.getElementById('elmtKopf.TransportInfo.AbholungVonDatum');
+
+    const kolli = document.getElementById('elmtKolliK_0_Gewicht');
+
+    if (pickup && kolli) {
+
+      runAutoFillLogic();
+
+      return true;
+
+    }
+
+    return false;
+
+  }
+
+  // Try immediately
+
+  if (checkAndMaybeRun()) return;
+
+  // If not ready yet, observe
+
+  const observer = new MutationObserver(() => {
+
+    if (checkAndMaybeRun()) observer.disconnect();
+
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
 
 })();
-
  

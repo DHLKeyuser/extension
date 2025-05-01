@@ -4,7 +4,7 @@
 
   "name": "AutoFill & Net Weight Checker (With Quantity)",
 
-  "version": "1.2",
+  "version": "1.3",
 
   "description": "Fills transport data and adjusts net weights based on quantity if needed.",
 
